@@ -1,0 +1,63 @@
+-- Ajouter un produit :
+CREATE OR REPLACE TYPE CategoryList AS TABLE OF INT; -- tableau de categorie 
+/
+
+CREATE OR REPLACE PROCEDURE AddProduct(
+    p_nameProduct VARCHAR2,
+    p_quantity NUMBER, -- Correction : Utiliser NUMBER au lieu de INT
+    p_price NUMBER,    -- Correction : Utiliser NUMBER au lieu de DECIMAL
+    p_categoryList CategoryList
+)
+AS
+    v_productId NUMBER; -- Correction : Utiliser NUMBER au lieu de INT
+BEGIN
+    -- Insertion du produit dans la table Products
+    INSERT INTO Products (nameProduct, quantity, price)
+    VALUES (p_nameProduct, p_quantity, p_price)
+    RETURNING idProduct INTO v_productId;
+
+    -- Insertion de l'association produit-catégorie dans la table Product_Category pour chaque catégorie
+    FOR i IN 1..p_categoryList.COUNT LOOP
+        INSERT INTO Product_Category (ProductId, CategoryId)
+        VALUES (v_productId, p_categoryList(i));
+    END LOOP;
+
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Produit ajouté avec succès.');
+EXCEPTION -- Correction : Exception au lieu de EXCE  3  PTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Une erreur s''est produite lors de l''ajout du produit.');
+END AddProduct;
+/
+
+
+-- Mettre à jour un produit "Update Product" :
+
+CREATE OR REPLACE PROCEDURE update_product (
+    p_idProduct IN INT,
+    p_name IN VARCHAR2,
+    p_quantity IN NUMBER,
+    p_price IN DECIMAL
+)
+IS
+BEGIN
+    UPDATE Products
+    SET nameProduct = p_name, quantity = p_quantity, price = p_price
+    WHERE idProduct = p_idProduct;
+    COMMIT;
+END;
+/
+
+-- Supprimer un produit  :
+CREATE OR REPLACE PROCEDURE delete_product (
+    p_idProduct IN INT
+)
+IS
+BEGIN
+    DELETE FROM Products
+    WHERE idProduct = p_idProduct;
+    COMMIT;
+END;
+/
+

@@ -1,0 +1,32 @@
+
+CREATE OR REPLACE TRIGGER before_product_delete
+BEFORE DELETE ON Products
+FOR EACH ROW
+BEGIN
+    
+    DELETE FROM Reviews
+    WHERE productId = :OLD.idProduct;
+
+    DELETE FROM Product_Category
+    WHERE ProductId = :OLD.idProduct;
+END;
+/
+
+-- Vérifier si tous les produits d’une catégorie sont supprimés pour supprimer la catégorie
+CREATE OR REPLACE TRIGGER check_category_delete
+BEFORE DELETE ON Products
+FOR EACH ROW
+DECLARE
+    v_count NUMBER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_count
+    FROM Products
+    WHERE idCategory = :OLD.idCategory;
+    
+    IF v_count = 1 THEN
+        DELETE FROM Categories
+        WHERE idCategory = :OLD.idCategory;
+    END IF;
+END;
+/

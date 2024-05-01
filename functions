@@ -1,0 +1,125 @@
+-- la liste des produits les plus demandés dans une période donnée
+CREATE OR REPLACE FUNCTION get_top_products(
+    v_start_date DATE,
+    v_end_date DATE
+) RETURN SYS_REFCURSOR AS
+    top_products SYS_REFCURSOR;
+BEGIN
+    OPEN top_products FOR
+        SELECT p.idProduct, p.nameProduct, SUM(oi.quantity) AS TotalQuantity
+        FROM Orders o
+        JOIN OrderItem oi ON o.idOrder = oi.OrderId
+        JOIN Products p ON oi.ProductId = p.idProduct
+        WHERE o.OrderDate BETWEEN v_start_date AND v_end_date
+        GROUP BY p.idProduct, p.nameProduct
+        ORDER BY TotalQuantity DESC;
+
+    RETURN top_products;
+END;
+/
+
+
+-- Les produits les plus commentés
+
+CREATE OR REPLACE FUNCTION get_most_reviewed_products
+RETURN SYS_REFCURSOR
+IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT p.nameProduct, COUNT(r.idReview) AS num_reviews
+        FROM Products p
+        LEFT JOIN Reviews r ON p.idProduct = r.productId
+        GROUP BY p.nameProduct
+        ORDER BY num_reviews DESC;
+        
+    RETURN v_cursor;
+END;
+/
+-- Les produits les plus évalué
+CREATE OR REPLACE FUNCTION get_highest_rated_products
+RETURN SYS_REFCURSOR
+IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT p.nameProduct, AVG(r.Rating) AS avg_rating
+        FROM Products p
+        JOIN Reviews r ON p.idProduct = r.productId
+        GROUP BY p.nameProduct
+        ORDER BY avg_rating DESC;
+        
+    RETURN v_cursor;
+END;
+/
+
+-- Les categories contient plus de produit(Calculer le nb de produit dans une catégorie)
+
+CREATE OR REPLACE FUNCTION get_categories_with_most_products
+RETURN SYS_REFCURSOR
+IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT c.name, COUNT(pc.ProductId) AS num_products
+        FROM Categories c
+        JOIN Product_Category pc ON c.idCategory = pc.CategoryId
+        GROUP BY c.name
+        ORDER BY num_products DESC;
+        
+    RETURN v_cursor;
+END;
+/
+
+-- la valeur totale du stock disponible
+
+CREATE OR REPLACE FUNCTION calculate_total_stock_value
+RETURN DECIMAL
+IS
+    v_total_stock_value DECIMAL := 0;
+BEGIN
+    SELECT SUM(quantity * price) INTO v_total_stock_value
+    FROM Products;
+    
+    RETURN v_total_stock_value;
+END;
+/
+-- les produits les plus demander et les plus exepencive
+
+CREATE OR REPLACE FUNCTION get_Most_Expensive_ordered_products
+RETURN SYS_REFCURSOR
+IS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT p.nameProduct, p.price, COUNT(oi.ProductId) AS num_orders
+        FROM Products p
+        JOIN OrderItem oi ON p.idProduct = oi.ProductId
+        GROUP BY p.nameProduct, p.price
+        ORDER BY p.price DESC, num_orders DESC;
+        
+    RETURN v_cursor;
+END;
+/
+
+CREATE OR REPLACE FUNCTION SearchProducts(
+    p_keyword VARCHAR2 DEFAULT NULL,
+    p_maxPrice DECIMAL DEFAULT NULL,
+    p_minQuantity INT DEFAULT NULL,
+    p_categoryId INT DEFAULT NULL
+) RETURN SYS_REFCURSOR
+AS
+    v_cursor SYS_REFCURSOR;
+BEGIN
+    OPEN v_cursor FOR
+        SELECT p.idProduct, p.nameProduct, p.quantity, p.price
+        FROM Products p
+        JOIN Product_Category pc ON p.idProduct = pc.ProductId
+        WHERE (p_keyword IS NULL OR p.nameProduct LIKE '%' || p_keyword || '%')
+        AND (p_maxPrice IS NULL OR p.price <= p_maxPrice)
+        AND (p_minQuantity IS NULL OR p.quantity >= p_minQuantity)
+        AND (p_categoryId IS NULL OR pc.CategoryId = p_categoryId);
+        
+    RETURN v_cursor;
+END SearchProducts;
+/
